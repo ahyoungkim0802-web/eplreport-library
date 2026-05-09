@@ -921,13 +921,15 @@ function jpgPreview() {
   const data = dbLoad(pvKey);
   const pt = document.getElementById('ptarget');
   pt.innerHTML = buildRptHTML(data);
-  pt.style.cssText='display:block;position:fixed;left:-9999px;width:720px;';
+  pt.style.cssText='display:block;position:fixed;left:-9999px;width:720px;background:#fff;';
   setTimeout(() => {
     const cv = pt.querySelector('#chartWrap canvas');
     let ci = null;
     if (cv) ci = buildChart(data, cv.getContext('2d'), 3);
     setTimeout(() => {
-      html2canvas(pt,{scale:3,useCORS:true,backgroundColor:'#ffffff',logging:false}).then(c=>{
+      const footer = pt.querySelector('.rfooter');
+      const H = footer ? footer.offsetTop + footer.offsetHeight : pt.scrollHeight;
+      html2canvas(pt,{scale:3,useCORS:true,backgroundColor:'#ffffff',logging:false,width:720,height:H,windowWidth:820,windowHeight:H+100}).then(c=>{
         const a=document.createElement('a');
         a.download=data.studentName+'_성적리포트.jpg';
         a.href=c.toDataURL('image/jpeg',0.97); a.click();
@@ -1248,37 +1250,33 @@ function saveJpg() {
     const report = document.getElementById('report');
     const student = document.getElementById('r-stu').value || '학생';
 
-    // 임시로 고정 너비 적용 후 캡처
-    const origStyle = report.getAttribute('style') || '';
-    report.style.width = '720px';
-    report.style.minWidth = '720px';
-    report.style.position = 'relative';
+    // 임시 컨테이너에 복제해서 정확한 높이로 캡처
+    const clone = report.cloneNode(true);
+    clone.style.cssText = 'width:720px;min-width:720px;position:absolute;left:-9999px;top:0;background:#fff;padding:0;margin:0;';
+    document.body.appendChild(clone);
 
-    // 잠깐 대기 후 전체 높이 캡처
     requestAnimationFrame(() => {
+      // footer(rfooter)까지의 실제 높이 계산
+      const footer = clone.querySelector('.rfooter');
+      const H = footer ? footer.offsetTop + footer.offsetHeight : clone.scrollHeight;
       const W = 720;
-      const H = report.scrollHeight;
-      html2canvas(report, {
+
+      html2canvas(clone, {
         scale: 3,
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
         width: W,
         height: H,
-        windowWidth: W + 400,
-        windowHeight: H + 400,
-        x: 0,
-        y: 0,
-        scrollX: 0,
-        scrollY: -window.scrollY
+        windowWidth: W + 100,
+        windowHeight: H + 100
       }).then(c => {
+        document.body.removeChild(clone);
         const a = document.createElement('a');
         a.download = student + '_성적리포트.jpg';
         a.href = c.toDataURL('image/jpeg', 0.97);
         a.click();
-        // 원래 스타일 복원
-        report.setAttribute('style', origStyle);
-      });
+      }).catch(() => { document.body.removeChild(clone); });
     });
   }, 700);
 }

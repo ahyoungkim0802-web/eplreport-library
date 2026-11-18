@@ -926,7 +926,8 @@ function jpgPreview() {
     const cv = pt.querySelector('#chartWrap canvas');
     let ci = null;
     if (cv) ci = buildChart(data, cv.getContext('2d'), 3);
-    setTimeout(() => {
+    setTimeout(async () => {
+      await freezeCharts(pt, pt);
       const footer = pt.querySelector('.rfooter');
       const H = footer ? footer.offsetTop + footer.offsetHeight : pt.scrollHeight;
       html2canvas(pt,{scale:3,useCORS:true,backgroundColor:'#ffffff',logging:false,width:720,height:H,windowWidth:820,windowHeight:H+100}).then(c=>{
@@ -937,6 +938,21 @@ function jpgPreview() {
       });
     }, 400);
   }, 100);
+}
+
+function freezeCharts(srcRoot, dstRoot) {
+  const src = Array.from(srcRoot.querySelectorAll('canvas'));
+  const dst = Array.from(dstRoot.querySelectorAll('canvas'));
+  return Promise.all(src.map((cv, i) => {
+    if (!dst[i]) return null;
+    const img = new Image();
+    const w = cv.offsetWidth || 190, h = cv.offsetHeight || 190;
+    img.style.cssText = 'display:block;width:' + w + 'px;height:' + h + 'px;';
+    const done = new Promise(res => { img.onload = res; img.onerror = res; });
+    img.src = cv.toDataURL('image/png');
+    dst[i].replaceWith(img);
+    return done;
+  }));
 }
 
 function drawChart(data, sel, dpr, inst, setter) {
@@ -1255,7 +1271,7 @@ function saveJpg() {
     clone.style.cssText = 'width:720px;min-width:720px;position:absolute;left:-9999px;top:0;background:#fff;padding:0;margin:0;';
     document.body.appendChild(clone);
 
-    requestAnimationFrame(() => {
+    freezeCharts(report, clone).then(() => requestAnimationFrame(() => {
       // footer(rfooter)까지의 실제 높이 계산
       const footer = clone.querySelector('.rfooter');
       const H = footer ? footer.offsetTop + footer.offsetHeight : clone.scrollHeight;
@@ -1277,7 +1293,7 @@ function saveJpg() {
         a.href = c.toDataURL('image/jpeg', 0.97);
         a.click();
       }).catch(() => { document.body.removeChild(clone); });
-    });
+    }));
   }, 700);
 }
 
